@@ -14,6 +14,6 @@ export interface Thread {
   providerId: string;
   lastMessageAt: string;
   customer: { id: string; name: string; avatarUrl?: string };
-  provider: { user: { name: string; avatarUrl?: string } };
+  provider: { user: { id: string; name: string; avatarUrl?: string } };
   messages: Message[];
 }

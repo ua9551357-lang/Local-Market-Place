@@ -19,6 +19,7 @@ interface SignupPayload {
 interface LoginPayload {
   email: string;
   password: string;
+  recaptchaToken: string;
 }
 
 export function useSignup() {

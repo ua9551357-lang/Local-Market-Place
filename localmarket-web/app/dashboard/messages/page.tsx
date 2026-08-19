@@ -32,7 +32,7 @@ function MessagesContent() {
             {selectedThread ? (
               <ChatPanel
                 threadId={selectedThread.id}
-                receiverId={selectedThread.provider.userId || ''}
+                receiverId={selectedThread.provider.user.id || ''}
                 receiverName={selectedThread.provider.user.name}
                 onBack={() => setSelectedThreadId(null)}
               />
