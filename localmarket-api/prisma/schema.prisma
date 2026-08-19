@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  customer
+  provider
+  admin
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+enum PaymentMethod {
+  cash
+  online
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+}
+
+enum ProviderStatus {
+  pending
+  approved
+  rejected
+}
+
+enum DayOfWeek {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+}
+
+enum PayoutMethodType {
+  bank
+  jazzcash
+  easypaisa
+}
+
+enum PayoutStatus {
+  pending
+  completed
+  failed
+}
+
+enum TicketStatus {
+  open
+  resolved
+}
+
+model AvailabilitySlot {
+  id          String    @id @default(uuid())
+  providerId  String
+  provider    ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  day         DayOfWeek
+  startTime   String    // "09:00"
+  endTime     String    // "18:00"
+  isAvailable Boolean   @default(true)
+
+  @@unique([providerId, day])
+  @@map("availability_slots")
+}
+
+model PayoutMethod {
+  id            String   @id @default(uuid())
+  providerId    String
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  type          PayoutMethodType
+  accountName   String
+  accountNumber String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  payouts Payout[]
+
+  @@map("payout_methods")
+}
+
+model Payout {
+  id              String   @id @default(uuid())
+  providerId      String
+  provider        ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  payoutMethodId  String
+  payoutMethod    PayoutMethod @relation(fields: [payoutMethodId], references: [id])
+  amount          Decimal
+  status          PayoutStatus @default(pending)
+  requestedAt     DateTime @default(now())
+  completedAt     DateTime?
+
+  @@map("payouts")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  role         Role     @default(customer)
+  avatarUrl    String?
+  city         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  providerProfile ProviderProfile?
+  bookings        Booking[]        @relation("CustomerBookings")
+  reviews         Review[]
+  notifications   Notification[]
+  sentMessages    Message[]        @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
+  threadsAsCustomer Thread[]       @relation("CustomerThreads")
+  googleId          String?   @unique
+  resetCode         String?
+  resetCodeExpiry   DateTime?
+   acceptingBookings  Boolean  @default(true)
+  advanceBookingDays Int      @default(7)
+  bufferTimeMins     Int      @default(30)
+  notifyEmail  Boolean @default(true)
+  notifySms    Boolean @default(true)
+  savedProviders SavedProvider[]
+  supportTickets SupportTicket[]
+
+  @@map("users")
+}
+
+model ProviderProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  bio             String?
+  experienceYears Int      @default(0)
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  responseRate    Int      @default(0)
+  priceFrom       Decimal  @default(0)
+  verified        Boolean  @default(false)
+  status          ProviderStatus @default(pending)
+  availability    String?
+  location        String?
+  createdAt       DateTime @default(now())
+
+  acceptingBookings  Boolean  @default(true)
+  advanceBookingDays Int      @default(7)
+  bufferTimeMins     Int      @default(30)
+
+  services  Service[]
+  bookings  Booking[] @relation("ProviderBookings")
+  reviews   Review[]  @relation("ProviderReviews")
+  threads   Thread[]  @relation("ProviderThreads")
+
+  availabilitySlots AvailabilitySlot[]
+  payoutMethods     PayoutMethod[]
+  payouts           Payout[]
+
+  notifyEmail Boolean @default(true)
+notifySms   Boolean @default(true)
+
+  @@map("provider_profiles")
+  savedBy SavedProvider[]
+}
+
+model Category {
+  id            String @id @default(uuid())
+  name          String @unique
+  icon          String?
+  providerCount Int    @default(0)
+
+  providers ProviderProfile[]
+  services  Service[]
+
+  @@map("categories")
+}
+
+model Service {
+  id            String          @id @default(uuid())
+  providerId    String
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category        @relation(fields: [categoryId], references: [id])
+  title         String
+  description   String?
+  price         Decimal
+  durationMins  Int
+  createdAt     DateTime        @default(now())
+
+  bookings Booking[]
+
+  @@map("services")
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  customerId  String
+  customer    User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  providerId  String
+  provider    ProviderProfile @relation("ProviderBookings", fields: [providerId], references: [id])
+  serviceId   String
+  service     Service       @relation(fields: [serviceId], references: [id])
+  date        DateTime
+  time        String
+  address     String?
+  issueDesc   String?
+  status      BookingStatus @default(pending)
+  amount      Decimal
+  paymentMethod PaymentMethod?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  payment  Payment?
+  review   Review?
+  threads  Thread[]
+
+  @@map("bookings")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  bookingId     String        @unique
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+  amount        Decimal
+  method        PaymentMethod
+  status        PaymentStatus @default(pending)
+  stripeIntentId String?
+  createdAt     DateTime      @default(now())
+
+  @@map("payments")
+}
+
+model Thread {
+  id            String   @id @default(uuid())
+  customerId    String
+  customer      User     @relation("CustomerThreads", fields: [customerId], references: [id])
+  providerId    String
+  provider      ProviderProfile @relation("ProviderThreads", fields: [providerId], references: [id])
+  bookingId     String?
+  booking       Booking? @relation(fields: [bookingId], references: [id])
+  lastMessageAt DateTime @default(now())
+
+  messages Message[]
+
+  @@map("threads")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  threadId   String
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@map("messages")
+}
+
+model Review {
+  id         String          @id @default(uuid())
+  bookingId  String          @unique
+  booking    Booking         @relation(fields: [bookingId], references: [id])
+  customerId String
+  customer   User            @relation(fields: [customerId], references: [id])
+  providerId String
+  provider   ProviderProfile @relation("ProviderReviews", fields: [providerId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime        @default(now())
+
+  @@map("reviews")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+model Settings {
+  id             String   @id @default(uuid())
+  platformName   String   @default("LocalMarket")
+  supportEmail   String   @default("support@localmarket.com")
+  contactNumber  String?
+  timezone       String   @default("Asia/Karachi")
+  currency       String   @default("PKR (Pakistani Rupee)")
+  updatedAt      DateTime @updatedAt
+
+  @@map("settings")
+}
+model SavedProvider {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, providerId])
+  @@map("saved_providers")
+}
+
+model SupportTicket {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String
+  status    TicketStatus @default(open)
+  createdAt DateTime     @default(now())
+
+  @@map("support_tickets")
+}

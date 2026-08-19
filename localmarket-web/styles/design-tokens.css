@@ -1,0 +1,30 @@
+:root {
+  /* Brand */
+  --color-brand-50: #F0FDF4;
+  --color-brand-100: #DCFCE7;
+  --color-brand-500: #22C55E;
+  --color-brand-600: #166534;
+  --color-brand-700: #14532D;
+  --color-brand-900: #0F3D28;
+  --color-brand-950: #0B2A1D;
+
+  /* Neutral */
+  --color-neutral-100: #F3F4F6;
+  --color-neutral-200: #E5E7EB;
+  --color-neutral-400: #9CA3AF;
+  --color-neutral-600: #4B5563;
+  --color-neutral-900: #111827;
+
+  /* Status */
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+  --color-success-bg: #DCFCE7;
+  --color-success-text: #166534;
+  --color-pending-bg: #FEF3C7;
+  --color-pending-text: #92400E;
+
+  /* Radius */
+  --radius-card: 16px;
+  --radius-pill: 9999px;
+}
